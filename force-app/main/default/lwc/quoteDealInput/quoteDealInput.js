@@ -84,57 +84,74 @@ export default class QuoteDealInput extends LightningElement {
   @track _isSaving = false;
   @track _editValues = {};
 
+  get wireRecordId() {
+    return this.recordId || null;
+  }
+
   @wire(getRecord, {
-    recordId: '$recordId',
+    recordId: '$wireRecordId',
     fields: QUOTE_REQUIRED_FIELDS,
     optionalFields: QUOTE_OPTIONAL_FIELDS,
   })
   wiredQuote({ error, data }) {
+    this._error = null;
     if (error) {
       this._error = error;
       return;
     }
     if (data) {
-      this._record = data;
-      this._overallDealType = getFieldValue(data, QUOTE_OVERALL_DEAL_TYPE) ?? '';
-      this._panFiserv = getFieldValue(data, QUOTE_PAN_FISERV) ?? '';
-      this._varTakeaway = getFieldValue(data, QUOTE_VAR_TAKEAWAY) === true;
-      this._varNameSpecify = getFieldValue(data, QUOTE_VAR_NAME_SPECIFY) ?? '';
-      this._cpiPercent = getFieldValue(data, QUOTE_CPI_PERCENT);
-      this._termMonths = getFieldValue(data, QUOTE_TERM_MONTHS);
-      const startVal = getFieldValue(data, QUOTE_PROPOSED_START_DATE);
-      this._startDate = startVal ? (typeof startVal === 'string' && startVal.indexOf('T') > -1 ? startVal.split('T')[0] : startVal) : '';
-      this._endDateDisplay = this._computeEndDate();
+      try {
+        this._record = data;
+        this._overallDealType = getFieldValue(data, QUOTE_OVERALL_DEAL_TYPE) ?? '';
+        this._panFiserv = getFieldValue(data, QUOTE_PAN_FISERV) ?? '';
+        this._varTakeaway = getFieldValue(data, QUOTE_VAR_TAKEAWAY) === true;
+        this._varNameSpecify = getFieldValue(data, QUOTE_VAR_NAME_SPECIFY) ?? '';
+        this._cpiPercent = getFieldValue(data, QUOTE_CPI_PERCENT);
+        this._termMonths = getFieldValue(data, QUOTE_TERM_MONTHS);
+        const startVal = getFieldValue(data, QUOTE_PROPOSED_START_DATE);
+        this._startDate = startVal ? (typeof startVal === 'string' && startVal.indexOf('T') > -1 ? startVal.split('T')[0] : String(startVal)) : '';
+        this._endDateDisplay = this._computeEndDate();
+      } catch (e) {
+        this._error = { message: e.message || 'Failed to load quote data.' };
+      }
+    }
+  }
+
+  _safeFieldValue(fieldRef) {
+    try {
+      return this._record ? getFieldValue(this._record, fieldRef) : null;
+    } catch (_) {
+      return null;
     }
   }
 
   get fiName() {
-    return this._record ? getFieldValue(this._record, QUOTE_FI_NAME) : '';
+    return this._safeFieldValue(QUOTE_FI_NAME) ?? '';
   }
   get fiLocation() {
-    return this._record ? getFieldValue(this._record, QUOTE_FI_LOCATION) : '';
+    return this._safeFieldValue(QUOTE_FI_LOCATION) ?? '';
   }
   get fbpsDirectFintech() {
-    return this._record ? getFieldValue(this._record, QUOTE_FBPS_DIRECT_FINTECH) : '';
+    return this._safeFieldValue(QUOTE_FBPS_DIRECT_FINTECH) ?? '';
   }
   get typeOfFi() {
-    return this._record ? getFieldValue(this._record, QUOTE_TYPE_OF_FI) : '';
+    return this._safeFieldValue(QUOTE_TYPE_OF_FI) ?? '';
   }
   get assetSizeM() {
-    const v = this._record ? getFieldValue(this._record, QUOTE_ASSET_SIZE_M) : null;
-    return v != null ? Number(v).toLocaleString() : '';
+    const v = this._safeFieldValue(QUOTE_ASSET_SIZE_M);
+    return v != null && v !== '' ? Number(v).toLocaleString() : '';
   }
   get ddaShareCount() {
-    const v = this._record ? getFieldValue(this._record, QUOTE_DDA_SHARE_ACCOUNTS_COUNT) : null;
-    return v != null ? Number(v).toLocaleString() : '';
+    const v = this._safeFieldValue(QUOTE_DDA_SHARE_ACCOUNTS_COUNT);
+    return v != null && v !== '' ? Number(v).toLocaleString() : '';
   }
   get smallBusinessDdas() {
-    const v = this._record ? getFieldValue(this._record, QUOTE_SMALL_BUSINESS_DDAS) : null;
-    return v != null ? Number(v).toLocaleString() : '';
+    const v = this._safeFieldValue(QUOTE_SMALL_BUSINESS_DDAS);
+    return v != null && v !== '' ? Number(v).toLocaleString() : '';
   }
   get olbUsers() {
-    const v = this._record ? getFieldValue(this._record, QUOTE_OLB_USERS) : null;
-    return v != null ? Number(v).toLocaleString() : '';
+    const v = this._safeFieldValue(QUOTE_OLB_USERS);
+    return v != null && v !== '' ? Number(v).toLocaleString() : '';
   }
 
   get overallDealTypeOptions() {
@@ -153,7 +170,11 @@ export default class QuoteDealInput extends LightningElement {
     return !this.recordId;
   }
   get hasAccount() {
-    return this._record && getFieldValue(this._record, QUOTE_OPPORTUNITY_ID);
+    try {
+      return !!(this._record && getFieldValue(this._record, QUOTE_OPPORTUNITY_ID));
+    } catch (_) {
+      return false;
+    }
   }
   get showNoAccountMessage() {
     return !this.hasAccount;
@@ -166,14 +187,24 @@ export default class QuoteDealInput extends LightningElement {
   }
   get errorMessage() {
     if (!this._error) return '';
-    const body = this._error.body;
-    if (body?.message) return body.message;
-    if (body?.pageErrors?.length) return body.pageErrors.map(e => e.message).join(' ');
-    if (body?.fieldErrors) {
-      const msgs = Object.values(body.fieldErrors).flat().map(e => e.message);
-      if (msgs.length) return msgs.join(' ');
+    try {
+      const body = this._error.body;
+      if (body?.message) return body.message;
+      if (Array.isArray(body?.pageErrors) && body.pageErrors.length) {
+        return body.pageErrors.map(e => e && e.message).filter(Boolean).join(' ');
+      }
+      if (body?.fieldErrors && typeof body.fieldErrors === 'object') {
+        const msgs = Object.values(body.fieldErrors)
+          .filter(Array.isArray)
+          .flat()
+          .map(e => e && e.message)
+          .filter(Boolean);
+        if (msgs.length) return msgs.join(' ');
+      }
+      return this._error.message || 'Unknown error loading quote.';
+    } catch (_) {
+      return this._error.message || 'Unknown error loading quote.';
     }
-    return this._error.message || 'Unknown error loading quote.';
   }
 
   _computeEndDate() {
@@ -213,9 +244,13 @@ export default class QuoteDealInput extends LightningElement {
   }
 
   get effectiveDateValue() {
-    const startVal = this._record && getFieldValue(this._record, QUOTE_PROPOSED_START_DATE);
-    const iso = startVal ? (typeof startVal === 'string' && startVal.indexOf('T') > -1 ? startVal.split('T')[0] : startVal) : '';
-    return this._startDate || iso || '';
+    try {
+      const startVal = this._safeFieldValue(QUOTE_PROPOSED_START_DATE);
+      const iso = startVal ? (typeof startVal === 'string' && startVal.indexOf('T') > -1 ? startVal.split('T')[0] : String(startVal)) : '';
+      return this._startDate || iso || '';
+    } catch (_) {
+      return this._startDate || '';
+    }
   }
 
   async handleSave() {
