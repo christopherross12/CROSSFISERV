@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FI_Location__c</fullName>
+    <label>FI Location (City/State)</label>
+    <formula>Opportunity.Account.BillingCity &amp; ", " &amp; Opportunity.Account.BillingState</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Text</type>
+    <externalId>false</externalId>
+</CustomField>

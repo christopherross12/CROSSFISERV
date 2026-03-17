@@ -1,0 +1,13 @@
+/* Read-only (green) formula fields - use SLDS token for subtle background */
+.read-only-field .slds-form-element__static {
+  background-color: var(--slds-c-color-background-success-muted, #eef4e8);
+  padding: var(--slds-spacing-x-small, 0.5rem) var(--slds-spacing-small, 0.75rem);
+  border-radius: var(--slds-c-radius-border-medium, 0.25rem);
+}
+
+/* End Date display - light blue/grey per spec */
+.end-date-field .slds-form-element__static {
+  background-color: var(--slds-c-color-background-alt-2, #f3f3f3);
+  padding: var(--slds-spacing-x-small, 0.5rem) var(--slds-spacing-small, 0.75rem);
+  border-radius: var(--slds-c-radius-border-medium, 0.25rem);
+}

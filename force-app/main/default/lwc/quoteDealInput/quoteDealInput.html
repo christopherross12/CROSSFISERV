@@ -1,0 +1,114 @@
+<template>
+  <lightning-card title="FI / Deal Input" icon-name="standard:quote">
+    <div class="slds-p-around_medium">
+      <template lwc:if={noRecordId}>
+        <p class="slds-text-color_weak">Open a Quote record to use this component.</p>
+      </template>
+      <template lwc:if={isLoading}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+      </template>
+      <template lwc:if={errorMessage}>
+        <div class="slds-m-bottom_medium slds-theme_error slds-p-around_small">
+          <p>{errorMessage}</p>
+          <p class="slds-m-top_small slds-text-body_small">Check that all custom Quote and Account fields are deployed and that your profile has read access.</p>
+        </div>
+      </template>
+      <template lwc:if={hasRecordAndRecordId}>
+        <template lwc:if={hasAccount}>
+          <div class="slds-grid slds-wrap slds-gutters">
+            <div class="slds-col slds-size_1-of_1 slds-medium-size_1-of_2">
+              <div class="slds-form-element slds-m-bottom_small read-only-field">
+                <label class="slds-form-element__label">FI Name:</label>
+                <div class="slds-form-element__control slds-form-element__static">{fiName}</div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small read-only-field">
+                <label class="slds-form-element__label">FI Location (City/State):</label>
+                <div class="slds-form-element__control slds-form-element__static">{fiLocation}</div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small">
+                <label class="slds-form-element__label">Fintech? (requires Direct)</label>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small read-only-field">
+                <label class="slds-form-element__label">FBPS, Direct, Fintech:</label>
+                <div class="slds-form-element__control slds-form-element__static">{fbpsDirectFintech}</div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small read-only-field">
+                <label class="slds-form-element__label">Type of FI:</label>
+                <div class="slds-form-element__control slds-form-element__static">{typeOfFi}</div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small">
+                <label class="slds-form-element__label" for="overall-deal-type">Overall Deal Type:</label>
+                <div class="slds-form-element__control">
+                  <lightning-combobox name="overallDealType" value={_overallDealType} placeholder="Select" options={overallDealTypeOptions} onchange={handleOverallDealTypeChange} id="overall-deal-type"></lightning-combobox>
+                </div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small">
+                <label class="slds-form-element__label" for="pan-fiserv">Pan-Fiserv?:</label>
+                <div class="slds-form-element__control">
+                  <lightning-combobox name="panFiserv" value={_panFiserv} options={panFiservOptions} onchange={handlePanFiservChange} id="pan-fiserv"></lightning-combobox>
+                </div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small">
+                <lightning-input type="checkbox" name="varTakeaway" label="VAR Takeaway?" checked={_varTakeaway} onchange={handleVarTakeawayChange}></lightning-input>
+              </div>
+              <template lwc:if={showVarNameSpecify}>
+                <div class="slds-form-element slds-m-bottom_small">
+                  <label class="slds-form-element__label" for="var-name-specify">If Yes, Specify VAR name</label>
+                  <div class="slds-form-element__control">
+                    <lightning-input type="text" name="varNameSpecify" value={_varNameSpecify} onchange={handleVarNameSpecifyChange} id="var-name-specify"></lightning-input>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <div class="slds-col slds-size_1-of_1 slds-medium-size_1-of_2">
+              <div class="slds-form-element slds-m-bottom_small read-only-field">
+                <label class="slds-form-element__label">Asset Size $M:</label>
+                <div class="slds-form-element__control slds-form-element__static">{assetSizeM}</div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small read-only-field">
+                <label class="slds-form-element__label">DDA/Share Accounts Count:</label>
+                <div class="slds-form-element__control slds-form-element__static">{ddaShareCount}</div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small read-only-field">
+                <label class="slds-form-element__label">Small Business DDAs:</label>
+                <div class="slds-form-element__control slds-form-element__static">{smallBusinessDdas}</div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small read-only-field">
+                <label class="slds-form-element__label">OLB Business and/or Retail Users:</label>
+                <div class="slds-form-element__control slds-form-element__static">{olbUsers}</div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small">
+                <label class="slds-form-element__label" for="cpi-percent">CPI%:</label>
+                <div class="slds-form-element__control">
+                  <lightning-input type="number" name="cpiPercent" value={_cpiPercent} step="0.1" min="0" max="100" formatter="decimal" onchange={handleCpiPercentChange} id="cpi-percent"></lightning-input>
+                </div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small">
+                <label class="slds-form-element__label" for="term-months">Term (# of months):</label>
+                <div class="slds-form-element__control">
+                  <lightning-input type="number" name="termMonths" value={_termMonths} min="0" onchange={handleTermMonthsChange} id="term-months"></lightning-input>
+                </div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small">
+                <label class="slds-form-element__label" for="start-date">Go Live or Proposed Start Date:</label>
+                <div class="slds-form-element__control">
+                  <lightning-input type="date" name="startDate" value={effectiveDateValue} onchange={handleStartDateChange} id="start-date"></lightning-input>
+                </div>
+              </div>
+              <div class="slds-form-element slds-m-bottom_small read-only-field end-date-field">
+                <label class="slds-form-element__label">End Date:</label>
+                <div class="slds-form-element__control slds-form-element__static">{endDateDisplay}</div>
+              </div>
+            </div>
+          </div>
+          <div class="slds-m-top_medium">
+            <lightning-button label="Save" variant="brand" onclick={handleSave} disabled={_isSaving} title="Save quote deal fields"></lightning-button>
+          </div>
+        </template>
+        <template lwc:if={showNoAccountMessage}>
+          <p class="slds-text-color_weak">This Quote has no related Account. Add an Account to use this form.</p>
+        </template>
+      </template>
+    </div>
+  </lightning-card>
+</template>
