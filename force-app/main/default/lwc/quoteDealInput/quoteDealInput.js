@@ -4,7 +4,7 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import saveQuoteDealFields from '@salesforce/apex/QuoteDealInputController.saveQuoteDealFields';
 
 import QUOTE_OPPORTUNITY_ID from '@salesforce/schema/Quote.OpportunityId';
-import QUOTE_PROPOSED_START_DATE from '@salesforce/schema/Quote.Proposed_Start_Date__c';
+import QUOTE_PROPOSED_START_DATE from '@salesforce/schema/Quote.StartDate';
 import QUOTE_FI_NAME from '@salesforce/schema/Quote.FI_Name__c';
 import QUOTE_FI_LOCATION from '@salesforce/schema/Quote.FI_Location__c';
 import QUOTE_FBPS_DIRECT_FINTECH from '@salesforce/schema/Quote.FBPS_Direct_Fintech__c';
@@ -57,7 +57,9 @@ const PAN_FISERV_OPTIONS = [
 function addMonths(date, months) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + months);
-  return d;
+
+  const finalEndDate = d - 1;
+  return finalEndDate;
 }
 
 function formatDate(value) {
@@ -271,7 +273,7 @@ export default class QuoteDealInput extends LightningElement {
       VAR_Name_Specify__c: this._varNameSpecify || null,
       CPI_Percent__c: this._cpiPercent != null && this._cpiPercent !== '' ? this._cpiPercent : null,
       Term_Months__c: this._termMonths != null && this._termMonths !== '' ? this._termMonths : null,
-      Proposed_Start_Date__c: proposedStart,
+      StartDate: this._startDate,
     };
     this._isSaving = true;
     try {
