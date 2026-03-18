@@ -77,19 +77,17 @@ export default class QuoteDealInput extends LightningElement {
   @track _panFiserv = '';
   @track _varTakeaway = false;
   @track _varNameSpecify = '';
-  @track _cpiPercent;
-  @track _termMonths;
+  @track _cpiPercent = '';
+  @track _termMonths = '';
   @track _startDate = '';
   @track _endDateDisplay = '';
   @track _isSaving = false;
   @track _editValues = {};
-
-  get wireRecordId() {
-    return this.recordId || null;
-  }
+  _record = null;
+  _error = null;
 
   @wire(getRecord, {
-    recordId: '$wireRecordId',
+    recordId: '$recordId',
     fields: QUOTE_REQUIRED_FIELDS,
     optionalFields: QUOTE_OPTIONAL_FIELDS,
   })
@@ -99,21 +97,24 @@ export default class QuoteDealInput extends LightningElement {
       this._error = error;
       return;
     }
-    if (data) {
-      try {
-        this._record = data;
-        this._overallDealType = getFieldValue(data, QUOTE_OVERALL_DEAL_TYPE) ?? '';
-        this._panFiserv = getFieldValue(data, QUOTE_PAN_FISERV) ?? '';
-        this._varTakeaway = getFieldValue(data, QUOTE_VAR_TAKEAWAY) === true;
-        this._varNameSpecify = getFieldValue(data, QUOTE_VAR_NAME_SPECIFY) ?? '';
-        this._cpiPercent = getFieldValue(data, QUOTE_CPI_PERCENT);
-        this._termMonths = getFieldValue(data, QUOTE_TERM_MONTHS);
-        const startVal = getFieldValue(data, QUOTE_PROPOSED_START_DATE);
-        this._startDate = startVal ? (typeof startVal === 'string' && startVal.indexOf('T') > -1 ? startVal.split('T')[0] : String(startVal)) : '';
-        this._endDateDisplay = this._computeEndDate();
-      } catch (e) {
-        this._error = { message: e.message || 'Failed to load quote data.' };
-      }
+    if (!this.recordId || !data) {
+      return;
+    }
+    try {
+      this._record = data;
+      this._overallDealType = getFieldValue(data, QUOTE_OVERALL_DEAL_TYPE) ?? '';
+      this._panFiserv = getFieldValue(data, QUOTE_PAN_FISERV) ?? '';
+      this._varTakeaway = getFieldValue(data, QUOTE_VAR_TAKEAWAY) === true;
+      this._varNameSpecify = getFieldValue(data, QUOTE_VAR_NAME_SPECIFY) ?? '';
+        const cpi = getFieldValue(data, QUOTE_CPI_PERCENT);
+        const term = getFieldValue(data, QUOTE_TERM_MONTHS);
+        this._cpiPercent = cpi != null && cpi !== '' ? cpi : '';
+        this._termMonths = term != null && term !== '' ? term : '';
+      const startVal = getFieldValue(data, QUOTE_PROPOSED_START_DATE);
+      this._startDate = startVal ? (typeof startVal === 'string' && startVal.indexOf('T') > -1 ? startVal.split('T')[0] : String(startVal)) : '';
+      this._endDateDisplay = this._computeEndDate();
+    } catch (e) {
+      this._error = { message: e.message || 'Failed to load quote data.' };
     }
   }
 
@@ -169,6 +170,12 @@ export default class QuoteDealInput extends LightningElement {
   get noRecordId() {
     return !this.recordId;
   }
+  get cpiPercentValue() {
+    return this._cpiPercent === undefined || this._cpiPercent === null ? '' : String(this._cpiPercent);
+  }
+  get termMonthsValue() {
+    return this._termMonths === undefined || this._termMonths === null ? '' : String(this._termMonths);
+  }
   get hasAccount() {
     try {
       return !!(this._record && getFieldValue(this._record, QUOTE_OPPORTUNITY_ID));
@@ -183,7 +190,7 @@ export default class QuoteDealInput extends LightningElement {
     return this.recordId && this._record;
   }
   get isLoading() {
-    return this.recordId && !this._record && !this._error;
+    return Boolean(this.recordId && !this._record && !this._error);
   }
   get errorMessage() {
     if (!this._error) return '';

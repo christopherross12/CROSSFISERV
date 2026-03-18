@@ -80,13 +80,13 @@
               <div class="slds-form-element slds-m-bottom_small">
                 <label class="slds-form-element__label" for="cpi-percent">CPI%:</label>
                 <div class="slds-form-element__control">
-                  <lightning-input type="number" name="cpiPercent" value={_cpiPercent} step="0.1" min="0" max="100" formatter="decimal" onchange={handleCpiPercentChange} id="cpi-percent"></lightning-input>
+                  <lightning-input type="number" name="cpiPercent" value={cpiPercentValue} step="0.1" min="0" max="100" formatter="decimal" onchange={handleCpiPercentChange} id="cpi-percent"></lightning-input>
                 </div>
               </div>
               <div class="slds-form-element slds-m-bottom_small">
                 <label class="slds-form-element__label" for="term-months">Term (# of months):</label>
                 <div class="slds-form-element__control">
-                  <lightning-input type="number" name="termMonths" value={_termMonths} min="0" onchange={handleTermMonthsChange} id="term-months"></lightning-input>
+                  <lightning-input type="number" name="termMonths" value={termMonthsValue} min="0" onchange={handleTermMonthsChange} id="term-months"></lightning-input>
                 </div>
               </div>
               <div class="slds-form-element slds-m-bottom_small">
