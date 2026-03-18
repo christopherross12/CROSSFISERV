@@ -12,28 +12,116 @@ public with sharing class QuoteDealInputController {
         if (quoteId == null || fieldValues == null || fieldValues.isEmpty()) {
             throw new AuraHandledException('Quote Id and field values are required.');
         }
-        Quote q = [SELECT Id FROM Quote WHERE Id = :quoteId WITH SECURITY_ENFORCED LIMIT 1];
+
+        // Load what we need to compute dependent fields (not DML).
+        Quote q = [
+            SELECT Id, StartDate, Term_Months__c
+            FROM Quote
+            WHERE Id = :quoteId
+            WITH SECURITY_ENFORCED
+            LIMIT 1
+        ];
+
+        Date startDateFinal;
+        Integer termMonthsFinal;
+
+        // Build the PATCH payload for the Place Sales Transaction graph.
+        Map<String, Object> quotePatchFieldValues = new Map<String, Object>();
         for (String key : fieldValues.keySet()) {
             Object val = fieldValues.get(key);
-            if (val == null) { continue; }
-            if (key == 'Proposed_Start_Date__c') {
-                q.put('Proposed_Start_Date__c', val);
+            if (val == null) {
+                continue;
+            }
+
+            if (key == 'StartDate') {
+                String s = String.valueOf(val);
+                // LWC sends YYYY-MM-DD, but be defensive if time is present.
+                if (s != null && s.contains('T')) {
+                    s = s.substring(0, s.indexOf('T'));
+                }
+                startDateFinal = Date.valueOf(s);
+                // RLM graph payloads commonly expect YYYY-MM-DD strings for date fields.
+                quotePatchFieldValues.put('StartDate', String.valueOf(startDateFinal));
             } else if (key == 'Overall_Deal_Type__c') {
-                q.put('Overall_Deal_Type__c', String.valueOf(val));
+                quotePatchFieldValues.put('Overall_Deal_Type__c', String.valueOf(val));
             } else if (key == 'Pan_Fiserv__c') {
-                q.put('Pan_Fiserv__c', String.valueOf(val));
+                quotePatchFieldValues.put('Pan_Fiserv__c', String.valueOf(val));
             } else if (key == 'VAR_Takeaway__c') {
-                q.put('VAR_Takeaway__c', Boolean.valueOf(val));
+                Boolean b = (val instanceof Boolean) ? (Boolean)val : Boolean.valueOf(String.valueOf(val));
+                quotePatchFieldValues.put('VAR_Takeaway__c', b);
             } else if (key == 'VAR_Name_Specify__c') {
-                q.put('VAR_Name_Specify__c', String.valueOf(val));
+                quotePatchFieldValues.put('VAR_Name_Specify__c', String.valueOf(val));
             } else if (key == 'CPI_Percent__c') {
                 Decimal d = Decimal.valueOf(String.valueOf(val));
-                if (d > 1) { d = d / 100; }
-                q.put('CPI_Percent__c', d);
+                // Convert 0-100 style input to 0-1 style percent expected by some orgs/schemas.
+                if (d > 1) {
+                    d = d / 100;
+                }
+                quotePatchFieldValues.put('CPI_Percent__c', d);
             } else if (key == 'Term_Months__c') {
-                q.put('Term_Months__c', Integer.valueOf(val));
+                Decimal dec = Decimal.valueOf(String.valueOf(val));
+                termMonthsFinal = dec.intValue();
+                quotePatchFieldValues.put('Term_Months__c', termMonthsFinal);
             }
         }
-        update as user q;
+
+        // Ensure we have enough to compute ExpirationDate (End Date).
+        if (startDateFinal == null) {
+            startDateFinal = q.StartDate;
+        }
+        if (termMonthsFinal == null) {
+            // Term_Months__c is a Number field; coerce to Integer for month math.
+            if (q.Term_Months__c == null) {
+                termMonthsFinal = null;
+            } else {
+                termMonthsFinal = Decimal.valueOf(String.valueOf(q.Term_Months__c)).intValue();
+            }
+        }
+
+        if (startDateFinal != null && termMonthsFinal != null) {
+            // Mirror the LWC behavior:
+            // JS does: end = addMonths(start, term); end = end - 1 (ms) => previous day.
+            Date expirationDate = startDateFinal.addMonths(termMonthsFinal).addDays(-1);
+            quotePatchFieldValues.put('ExpirationDate', String.valueOf(expirationDate));
+        }
+
+        if (quotePatchFieldValues.isEmpty()) {
+            throw new AuraHandledException('No Quote fields to update.');
+        }
+
+        // RevSalesTrxn GraphRequest: patch the Quote header (quote-level fields)
+        // using the Place Sales Transaction flow (no Salesforce DML).
+        RevSalesTrxn.RecordResource quoteRecord =
+            new RevSalesTrxn.RecordResource(Quote.getSobjectType(), 'PATCH', quoteId);
+        quoteRecord.fieldValues = quotePatchFieldValues;
+
+        RevSalesTrxn.RecordWithReferenceRequest quoteItemRecords =
+            new RevSalesTrxn.RecordWithReferenceRequest('refQuote', quoteRecord);
+
+        List<RevSalesTrxn.RecordWithReferenceRequest> listOfRecords =
+            new List<RevSalesTrxn.RecordWithReferenceRequest>();
+        listOfRecords.add(quoteItemRecords);
+
+        RevSalesTrxn.GraphRequest graph = new RevSalesTrxn.GraphRequest('quoteDealInput', listOfRecords);
+
+        RevSalesTrxn.PricingPreferenceEnum pricingPrefEnum = RevSalesTrxn.PricingPreferenceEnum.SYSTEM;
+        RevSalesTrxn.ConfigurationExecutionEnum configurationExecutionEnum = RevSalesTrxn.ConfigurationExecutionEnum.SYSTEM;
+
+        // There are multiple executor signatures. This mirrors the documented example signature.
+        RevSalesTrxn.PlaceSalesTransactionResponse resp =
+            RevSalesTrxn.PlaceSalesTransactionExecutor.execute(
+                graph,
+                pricingPrefEnum,
+                configurationExecutionEnum,
+                new RevSalesTrxn.ConfigurationOptionsInput(),
+                null,
+                null,
+                null,
+                null
+            );
+
+        if (resp == null) {
+            throw new AuraHandledException('Failed to place sales transaction.');
+        }
     }
 }
