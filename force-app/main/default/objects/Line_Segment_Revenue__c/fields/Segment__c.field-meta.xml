@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Segment__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
     <label>Segment</label>
     <referenceTo>Segment__c</referenceTo>
     <relationshipLabel>Line Segment Revenues</relationshipLabel>
     <relationshipName>Line_Segment_Revenues</relationshipName>
     <required>true</required>
-    <deleteConstraint>Restrict</deleteConstraint>
+    <trackTrending>false</trackTrending>
     <type>Lookup</type>
-    <externalId>false</externalId>
 </CustomField>
