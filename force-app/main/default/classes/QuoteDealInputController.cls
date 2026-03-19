@@ -16,7 +16,7 @@ public with sharing class QuoteDealInputController {
         // Load what we need to compute dependent fields.
         // Note: We intentionally do NOT perform any DML updates here; RLM Place Sales Transaction will do the update.
         Quote q = [
-            SELECT Id, StartDate, Term_Months__c
+            SELECT Id, StartDate, Term_Months__c, EndDate
             FROM Quote
             WHERE Id = :quoteId
             WITH SECURITY_ENFORCED
@@ -26,6 +26,7 @@ public with sharing class QuoteDealInputController {
         // These variables allow us to compute EndDate when the user changes StartDate and/or Term_Months__c.
         Date startDateFinal;
         Integer termMonthsFinal;
+        Date endDateFinal;
 
         // Build the PATCH payload for the Place Sales Transaction graph.
         // The connect-api sample request uses Quote header keys: StartDate and EndDate.
@@ -54,7 +55,8 @@ public with sharing class QuoteDealInputController {
                 if (s != null && s.contains('T')) {
                     s = s.substring(0, s.indexOf('T'));
                 }
-                Date endDateFinal = Date.valueOf(s);
+                endDateFinal = Date.valueOf(s);
+                // Quote has the standard end date field `EndDate`.
                 quotePatchFieldValues.put('EndDate', String.valueOf(endDateFinal));
             } else if (key == 'Overall_Deal_Type__c') {
                 quotePatchFieldValues.put('Overall_Deal_Type__c', String.valueOf(val));
@@ -101,10 +103,8 @@ public with sharing class QuoteDealInputController {
         if (!quotePatchFieldValues.containsKey('EndDate') && startDateFinal != null && termMonthsFinal != null) {
             // Mirror the LWC behavior:
             // JS does: end = addMonths(start, term); end = end - 1 (ms) => previous day.
-            Date expirationDate = startDateFinal.addMonths(termMonthsFinal).addDays(-1);
-            // The RLM Connect API sample uses "EndDate" as the request key.
-            // (In this UI, we display that value as the End/Expiration date.)
-            quotePatchFieldValues.put('EndDate', String.valueOf(expirationDate));
+            Date EndDate = startDateFinal.addMonths(termMonthsFinal).addDays(-1);
+            quotePatchFieldValues.put('EndDate', String.valueOf(EndDate));
         }
 
         if (quotePatchFieldValues.isEmpty()) {
@@ -126,6 +126,38 @@ public with sharing class QuoteDealInputController {
             new List<RevSalesTrxn.RecordWithReferenceRequest>();
         listOfRecords.add(quoteItemRecords);
 
+        // IMPORTANT: Some orgs require quote line item context in the graph for a Quote PATCH.
+        // Including QuoteLineItem fieldValues can trigger field-level access errors for users.
+        // To avoid exceptions, we add QLIs as PATCH records with NO fieldValues.
+        List<QuoteLineItem> existingLineItems = [
+            SELECT Id,
+                   QuoteId,
+                   Product2Id,
+                   PricebookEntryId,
+                   Quantity,
+                   UnitPrice,
+                   SellingModelType,
+                   StartDate,
+                   EndDate
+            FROM QuoteLineItem
+            WHERE (SellingModelType = 'TermDefined' AND QuoteId = :quoteId)];
+        Integer i = 0;
+
+        system.debug('existingLineItems count : ' + existingLineItems.size());
+
+        for (QuoteLineItem qli : existingLineItems) {
+            system.debug('qli: ' + qli.Product2Id);
+            RevSalesTrxn.RecordResource quoteLineItemRecord =
+                new RevSalesTrxn.RecordResource(QuoteLineItem.getSobjectType(), 'PATCH', qli.Id);
+            quoteLineItemRecord.fieldValues = new Map<String, Object>();
+            quoteLineItemRecord.fieldValues.put('StartDate', String.valueOf(startDateFinal));
+            quoteLineItemRecord.fieldValues.put('EndDate', String.valueOf(endDateFinal));
+            listOfRecords.add(
+                new RevSalesTrxn.RecordWithReferenceRequest('refQuoteItem' + i, quoteLineItemRecord)
+            );
+            i++;
+        }
+
         // Graph name: arbitrary identifier for tracing the request.
         RevSalesTrxn.GraphRequest graph = new RevSalesTrxn.GraphRequest('quoteDealInput', listOfRecords);
 
@@ -142,7 +174,10 @@ public with sharing class QuoteDealInputController {
                     pricingPrefEnum,
                     configurationExecutionEnum,
                     new RevSalesTrxn.ConfigurationOptionsInput(),
-                    null
+                    (Id) null,
+                    (RevSalesTrxn.CatalogRatesPreferenceEnum) null,
+                    (RevSalesTrxn.TaxPreferenceEnum) null,
+                    (RevSalesTrxn.PersistPreferenceEnum) null
                 );
         } catch (Exception ex) {
             // Surface executor errors to the LWC.
@@ -151,10 +186,25 @@ public with sharing class QuoteDealInputController {
 
         // Helpful for debugging in Apex logs (verify that the PATCH payload was accepted).
         System.debug('PlaceSalesTransactionResponse=' + resp);
+        if (resp != null) {
+            System.debug('PlaceSalesTransactionResponse.isSuccess=' + resp.isSuccess);
+            System.debug('PlaceSalesTransactionResponse.errorResponse=' + JSON.serialize(resp.errorResponse));
+        }
 
         // If the executor didn't return a response object, treat it as a failure.
         if (resp == null) {
             throw new AuraHandledException('Failed to place sales transaction.');
+        }
+
+        // If the synchronous portion failed, surface the errors to the LWC/test.
+        if (resp.isSuccess != true) {
+            String errJson = resp.errorResponse == null ? null : JSON.serialize(resp.errorResponse);
+            if (errJson != null && errJson.length() > 600) {
+                errJson = errJson.substring(0, 600) + '...';
+            }
+            throw new AuraHandledException(
+                'Place Sales Transaction failed (isSuccess=false): ' + (errJson == null ? 'Unknown RLM error.' : errJson)
+            );
         }
     }
 }

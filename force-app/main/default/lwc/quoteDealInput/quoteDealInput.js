@@ -114,6 +114,10 @@ function formatMonthDayYearFromIso(iso) {
       month: 'long',
       day: 'numeric',
       year: 'numeric',
+      // IMPORTANT: dt is constructed at UTC midnight.
+      // If we format in the user's local timezone, it can display as the previous day
+      // (e.g., UTC midnight is prior evening in PDT), causing an off-by-one render.
+      timeZone: 'UTC',
     }).format(dt);
   } catch (e) {
     // Minimal fallback if Intl is unavailable.
