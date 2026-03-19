@@ -3,7 +3,8 @@
  * Returns Segment records for a Quote and saves KPI field updates.
  */
 public with sharing class SegmentKpiTableController {
-    @AuraEnabled(cacheable=false)
+    // Read-only query used by the LWC via `@wire`, so it must be cacheable.
+    @AuraEnabled(cacheable=true)
     public static List<SegmentDto> getSegmentsByQuote(Id quoteId) {
         if (quoteId == null) {
             return new List<SegmentDto>();
