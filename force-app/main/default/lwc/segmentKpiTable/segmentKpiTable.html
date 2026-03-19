@@ -1,0 +1,118 @@
+<template>
+  <lightning-card title="Retail / Send KPIs" icon-name="standard:chart">
+    <div class="slds-p-around_medium">
+      <template lwc:if={isLoading}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+      </template>
+      <template lwc:if={error}>
+        <div class="slds-m-bottom_medium slds-theme_error slds-p-around_small">
+          <p>{error}</p>
+        </div>
+      </template>
+      <template lwc:if={hasSegments}>
+        <div class="table-wrapper">
+          <table class="kpi-table slds-table slds-table_cell-buffer slds-table_bordered">
+            <thead>
+              <tr class="kpi-header-row">
+                <th class="slds-text-title_caps label-cell">Retail / Send KPIs</th>
+                <template for:each={segmentColumns} for:item="seg">
+                  <th key={seg.id} class="slds-text-title_caps year-cell">{seg.name}</th>
+                </template>
+                <th class="slds-text-title_caps total-cell">Average/Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="label-cell">Beginning DDA</td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id} class="data-cell dda-cell">{seg.ddaDisplay}</td>
+                </template>
+                <td class="total-cell bold-cell" lwc:if={averageTotalColumn}>{averageTotalColumn.ddaDisplay}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Ending DDA</td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id} class="data-cell dda-cell">{seg.ddaDisplay}</td>
+                </template>
+                <td class="total-cell bold-cell" lwc:if={averageTotalColumn}>{averageTotalColumn.ddaDisplay}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Average DDA</td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id} class="data-cell dda-cell">
+                    <lightning-input type="number" data-segment-id={seg.id} data-field="dda" value={seg.dda} onchange={handleDdaChange} variant="label-hidden" class="inline-input"></lightning-input>
+                  </td>
+                </template>
+                <td class="total-cell bold-cell" lwc:if={averageTotalColumn}>{averageTotalColumn.ddaDisplay}</td>
+              </tr>
+              <tr>
+                <td class="label-cell orange-label">Adoption Rate</td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id} class="data-cell">
+                    <lightning-input type="number" data-segment-id={seg.id} data-field="adoptionRate" value={seg.adoptionRate} step="0.1" formatter="decimal" onchange={handlePercentChange} variant="label-hidden" class="inline-input"></lightning-input>
+                  </td>
+                </template>
+                <td class="total-cell bold-cell" lwc:if={averageTotalColumn}>{averageTotalColumn.adoptionRateDisplay}</td>
+              </tr>
+              <tr>
+                <td class="label-cell orange-label">Active Users</td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id} class="data-cell">
+                    <lightning-input type="number" data-segment-id={seg.id} data-field="activeUsers" value={seg.activeUsers} onchange={handleNumberChange} variant="label-hidden" class="inline-input"></lightning-input>
+                  </td>
+                </template>
+                <td class="total-cell bold-cell" lwc:if={averageTotalColumn}>{averageTotalColumn.activeUsersDisplay}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Transactions as a % of DDA's</td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id} class="data-cell">
+                    <lightning-input type="number" data-segment-id={seg.id} data-field="transactionsAsPctOfDdas" value={seg.transactionsAsPctOfDdas} step="0.1" formatter="decimal" onchange={handlePercentChange} variant="label-hidden" class="inline-input"></lightning-input>
+                  </td>
+                </template>
+                <td class="total-cell bold-cell" lwc:if={averageTotalColumn}>{averageTotalColumn.transPctDisplay}</td>
+              </tr>
+              <tr class="spacer-row">
+                <td class="label-cell"></td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id}></td>
+                </template>
+                <td lwc:if={averageTotalColumn}></td>
+              </tr>
+              <tr>
+                <td class="label-cell">Average Monthly Tran Volume</td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id} class="data-cell yellow-cell">
+                    <lightning-input type="number" data-segment-id={seg.id} data-field="avgMonthlyTransVolume" value={seg.avgMonthlyTransVolume} onchange={handleNumberChange} variant="label-hidden" class="inline-input"></lightning-input>
+                  </td>
+                </template>
+                <td class="total-cell bold-cell yellow-cell" lwc:if={averageTotalColumn}>{averageTotalColumn.avgMonthlyDisplay}</td>
+              </tr>
+              <tr class="annual-row">
+                <td class="label-cell bold-cell">Annual Trans</td>
+                <template for:each={segmentColumns} for:item="seg">
+                  <td key={seg.id} class="data-cell">
+                    <lightning-input type="number" data-segment-id={seg.id} data-field="annualTrans" value={seg.annualTrans} onchange={handleNumberChange} variant="label-hidden" class="inline-input"></lightning-input>
+                  </td>
+                </template>
+                <td class="total-cell bold-cell" lwc:if={averageTotalColumn}>{averageTotalColumn.annualTransDisplay}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="slds-m-top_medium">
+          <lightning-button label="Save" variant="brand" onclick={handleSave} disabled={isSaveDisabled} title="Save segment KPIs"></lightning-button>
+        </div>
+      </template>
+      <template lwc:if={recordId}>
+        <template lwc:if={hasSegments}></template>
+        <template lwc:else>
+          <p class="slds-text-color_weak slds-m-top_small">No segments for this Quote. Save the Quote with a Start Date and Term to create segments.</p>
+        </template>
+      </template>
+      <template lwc:if={noRecordId}>
+        <p class="slds-text-color_weak">Open a Quote record to view segment KPIs.</p>
+      </template>
+    </div>
+  </lightning-card>
+</template>

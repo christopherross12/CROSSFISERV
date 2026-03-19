@@ -34,9 +34,17 @@
     </types>
     <types>
         <members>Account</members>
+        <members>Line_Segment_Revenue__c</members>
         <members>Quote</members>
+        <members>Segment__c</members>
         <name>CustomObject</name>
     </types>
+    <!--
+    <types>
+        <members>Create_Or_Update_Segments_For_Quote</members>
+        <name>Flow</name>
+    </types>
+    -->
     <types>
         <members>*</members>
         <name>PermissionSet</name>

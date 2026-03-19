@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Asset_Size_M__c</fullName>
-    <label>Asset Size $M</label>
+    <externalId>false</externalId>
     <formula>Opportunity.Account.Asset_Size_M__c</formula>
     <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Asset Size $M</label>
     <precision>18</precision>
+    <required>false</required>
     <scale>0</scale>
+    <trackHistory>false</trackHistory>
     <type>Number</type>
-    <externalId>false</externalId>
+    <unique>false</unique>
 </CustomField>

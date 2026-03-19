@@ -1,0 +1,50 @@
+<aura:component
+        implements="force:hasRecordId,flexipage:availableForAllPageTypes,forceCommunity:availableForAllPageTypes"
+        access="global">
+    <aura:attribute name="xdoToolTrackingEventConstants" type="Map"
+                    default="{'COMPONENT_NAME': 'XdoToolTrackingEventConfig', 'VERSION': 'v1'}"/>
+
+    <aura:attribute name="hasRendered" type="Boolean" default="false"/>
+    <aura:attribute name="description" type="String" default="Internal component used by GSX demo brix"/>
+    <aura:attribute name="pageContext" type="String" default=""
+                    description="Contextual location for this instance, eg. FINS NextGen Retail Banking Sales Utility Bar"/>
+    <aura:attribute name="source" type="String" default=""
+                    description="Moniker to indicate the originating source of this asset, eg. A github repository, demo brick name etc"/>
+    <aura:attribute name="minutesSaved" type="String" default="0"
+                    description="Realistically, how much time a user has saved using this asset"/>
+    <aura:attribute name="once" type="Boolean" default="false"
+                    description="Flag to indicate an event should only be recorded once. The unique identifier will be the Page Context"/>
+
+    <aura:handler name="init" value="{!this}" action="{!c.handleInit}"/>
+    <aura:handler name="render" value="{!this}" action="{!c.handleRender}"/>
+    <aura:handler event="force:refreshView" action="{!c.handleRefresh}"/>
+
+    <div class="details-container slds-is-relative">
+        <lightning:tabset>
+            <lightning:tab label="LWC" title="Invoke from an lwc">
+                <c:xdoToolTrackingEventConfig aura:id="xdoToolTrackingEventConfig"
+                                              pageContext="{!v.pageContext}"></c:xdoToolTrackingEventConfig>
+
+                blah <br/>
+                blah <br/>
+
+            </lightning:tab>
+            <lightning:tab label="Aura" title="Invoke from an Aura component">
+                ..
+            </lightning:tab>
+            <lightning:tab label="Invocable Action" title="Invoke from Flow, Chatbot, Omniscripts">
+                ..
+            </lightning:tab>
+            <lightning:tab label="RESTful Api" title="Invoke via an endpoint">
+                ..
+            </lightning:tab>
+        </lightning:tabset>
+
+        <span class="version slds-is-absolute">
+            <lightning:formattedRichText
+                    value="{!$Label.c.xDO_Tool_Tracking_Event_Version}"></lightning:formattedRichText>
+        </span>
+
+        <c:xdoToolTrackingEventHandler aura:id="xdoToolTrackingEventHandler"/>
+    </div>
+</aura:component>

@@ -1,0 +1,11 @@
+<design:component label="Xdo Tool - GSX Demos Event Tracking">
+    <design:attribute name="description" label="Purpose" description="Internal component used by GSX demo brick"/>
+    <design:attribute name="pageContext" label="Page Context"
+                      description="Contextual location for this instance, eg. FINS NextGen Retail Banking Sales Utility Bar. Mapped to the action property in the Mixpanel Conversion event"/>
+    <design:attribute name="source" label="Source"
+                      description="Moniker to indicate the originating source of this asset, eg. A github repository, demo brick name etc"/>
+    <design:attribute name="minutesSaved" label="Minutes Saved"
+                      description="Realistically, how much time a user has saved using this asset"/>
+    <design:attribute name="once" label="Only track this event once?"
+                      description="Flag to indicate an event should only be recorded once. The unique identifier will be the Page Context"/>
+</design:component>

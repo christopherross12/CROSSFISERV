@@ -3,7 +3,8 @@
     <fullName>CPI_Percent__c</fullName>
     <label>CPI%</label>
     <precision>5</precision>
+    <required>false</required>
     <scale>2</scale>
+    <trackHistory>false</trackHistory>
     <type>Percent</type>
-    <externalId>false</externalId>
 </CustomField>
