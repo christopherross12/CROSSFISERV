@@ -78,9 +78,24 @@ function computeEndDateIsoFromStartIso(startIso, termMonths) {
   const months = Number(termMonths);
   if (!startUtc || Number.isNaN(months)) return '';
 
-  const endUtc = new Date(startUtc.getTime());
-  endUtc.setUTCMonth(endUtc.getUTCMonth() + months);
-  endUtc.setUTCDate(endUtc.getUTCDate() - 1);
+  // Apex `Date.addMonths()` clamps to the last valid day of the target month
+  // (JS `setMonth` can overflow into the following month).
+  // Implement the same clamped month-add behavior using UTC calendar math.
+  const startY = startUtc.getUTCFullYear();
+  const startM0 = startUtc.getUTCMonth(); // 0-based
+  const startD = startUtc.getUTCDate();
+
+  const totalMonths = startM0 + months;
+  const targetY = startY + Math.floor(totalMonths / 12);
+  const targetM0 = ((totalMonths % 12) + 12) % 12; // keep positive
+
+  const daysInTargetMonth = new Date(Date.UTC(targetY, targetM0 + 1, 0)).getUTCDate();
+  const targetD = Math.min(startD, daysInTargetMonth);
+
+  const endUtcMs = Date.UTC(targetY, targetM0, targetD);
+  // Subtract 1 day per business rule.
+  const endUtcMsMinus1 = endUtcMs - 86400000;
+  const endUtc = new Date(endUtcMsMinus1);
 
   const y = endUtc.getUTCFullYear();
   const m = pad2(endUtc.getUTCMonth() + 1);
