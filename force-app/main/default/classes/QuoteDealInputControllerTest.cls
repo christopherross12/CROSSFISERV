@@ -13,11 +13,15 @@ private class QuoteDealInputControllerTest {
     insert opp;
     Quote q = new Quote(
       Name = 'Test Quote',
-      OpportunityId = opp.Id
+      OpportunityId = opp.Id,
+      // Seed a StartDate so Place Sales Transaction has the required date context.
+      StartDate = Date.today()
     );
     insert q;
 
+    Date newStartDate = Date.today().addDays(7);
     Map<String, Object> fieldValues = new Map<String, Object>{
+      'StartDate' => newStartDate,
       'Overall_Deal_Type__c' => 'New',
       'Pan_Fiserv__c' => 'Yes',
       'VAR_Takeaway__c' => false,
@@ -29,12 +33,18 @@ private class QuoteDealInputControllerTest {
     QuoteDealInputController.saveQuoteDealFields(q.Id, fieldValues);
     Test.stopTest();
 
-    Quote updated = [SELECT Id, Overall_Deal_Type__c, Pan_Fiserv__c, VAR_Takeaway__c, CPI_Percent__c, Term_Months__c FROM Quote WHERE Id = :q.Id];
+    Quote updated = [
+      SELECT Id, Overall_Deal_Type__c, Pan_Fiserv__c, VAR_Takeaway__c, CPI_Percent__c, Term_Months__c, ExpirationDate
+      FROM Quote
+      WHERE Id = :q.Id
+    ];
     System.assertEquals('New', updated.Overall_Deal_Type__c, 'Overall Deal Type should be New');
     System.assertEquals('Yes', updated.Pan_Fiserv__c, 'Pan Fiserv should be Yes');
     System.assertEquals(false, updated.VAR_Takeaway__c, 'VAR Takeaway should be false');
     System.assertEquals(0.03, updated.CPI_Percent__c, 'CPI Percent should be 0.03');
     System.assertEquals(60, updated.Term_Months__c, 'Term Months should be 60');
+    Date expectedEndDate = newStartDate.addMonths(60).addDays(-1);
+    System.assertEquals(expectedEndDate, updated.ExpirationDate, 'End Date should be written to Quote.ExpirtationDate via RLM.');
   }
 
   @IsTest

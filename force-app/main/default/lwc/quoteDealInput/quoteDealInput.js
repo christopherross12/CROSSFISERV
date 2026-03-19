@@ -23,6 +23,8 @@ import QUOTE_TERM_MONTHS from '@salesforce/schema/Quote.Term_Months__c';
 // Only standard field – ensures getRecord succeeds even if custom fields are missing or not accessible
 const QUOTE_REQUIRED_FIELDS = [QUOTE_OPPORTUNITY_ID];
 
+// Optional fields let the component render in orgs where some fields
+// might not be visible yet; missing optional fields are handled defensively.
 const QUOTE_OPTIONAL_FIELDS = [
   QUOTE_PROPOSED_START_DATE,
   QUOTE_FI_NAME,
@@ -42,6 +44,7 @@ const QUOTE_OPTIONAL_FIELDS = [
 ];
 
 
+// UI option lists used by comboboxes/selection components.
 const OVERALL_DEAL_TYPE_OPTIONS = [
   { label: 'New', value: 'New' },
   { label: 'Renewal', value: 'Renewal' },
@@ -54,27 +57,64 @@ const PAN_FISERV_OPTIONS = [
   { label: 'No', value: 'No' },
 ];
 
-function addMonths(date, months) {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
-
-  const finalEndDate = d - 1;
-  return finalEndDate;
+// Helpers for End Date calculation/display.
+function pad2(n) {
+  return String(n).padStart(2, '0');
 }
 
-function formatDate(value) {
-  if (value == null || value === '') return '';
-  const d = value instanceof Date ? value : new Date(value);
-  if (isNaN(d.getTime())) return '';
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${m}/${day}/${y}`;
+function parseIsoDateToUtc(iso) {
+  // Expects `YYYY-MM-DD`. Returns a Date in UTC at midnight.
+  if (!iso || typeof iso !== 'string') return null;
+  const parts = iso.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(v => Number.isNaN(v))) return null;
+  const [y, m, d] = parts;
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function computeEndDateIsoFromStartIso(startIso, termMonths) {
+  // The app’s end date rule mirrors the earlier LWC behavior:
+  // EndDate = (StartDate + Term_Months months) - 1 day
+  const startUtc = parseIsoDateToUtc(startIso);
+  const months = Number(termMonths);
+  if (!startUtc || Number.isNaN(months)) return '';
+
+  const endUtc = new Date(startUtc.getTime());
+  endUtc.setUTCMonth(endUtc.getUTCMonth() + months);
+  endUtc.setUTCDate(endUtc.getUTCDate() - 1);
+
+  const y = endUtc.getUTCFullYear();
+  const m = pad2(endUtc.getUTCMonth() + 1);
+  const d = pad2(endUtc.getUTCDate());
+  return `${y}-${m}-${d}`;
+}
+
+function formatMonthDayYearFromIso(iso) {
+  if (!iso) return '';
+  const dt = parseIsoDateToUtc(iso);
+  if (!dt) return '';
+
+  // Required output format: "Month Day, Year" (e.g., "March 19, 2026").
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(dt);
+  } catch (e) {
+    // Minimal fallback if Intl is unavailable.
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    const monthName = monthNames[dt.getUTCMonth()] || '';
+    return `${monthName} ${dt.getUTCDate()}, ${dt.getUTCFullYear()}`;
+  }
 }
 
 export default class QuoteDealInput extends LightningElement {
   @api recordId;
 
+  // UI state backing variables (tracked so template updates are reactive).
   @track _overallDealType = '';
   @track _panFiserv = '';
   @track _varTakeaway = false;
@@ -88,6 +128,7 @@ export default class QuoteDealInput extends LightningElement {
   _record = null;
   _error = null;
 
+  // Load Quote record for display + initial values for editable fields.
   @wire(getRecord, {
     recordId: '$recordId',
     fields: QUOTE_REQUIRED_FIELDS,
@@ -108,6 +149,9 @@ export default class QuoteDealInput extends LightningElement {
       this._panFiserv = getFieldValue(data, QUOTE_PAN_FISERV) ?? '';
       this._varTakeaway = getFieldValue(data, QUOTE_VAR_TAKEAWAY) === true;
       this._varNameSpecify = getFieldValue(data, QUOTE_VAR_NAME_SPECIFY) ?? '';
+
+      // CPI and Term can be empty strings depending on org data.
+      // We keep them as-is for UI formatting and let Apex coerce on save.
         const cpi = getFieldValue(data, QUOTE_CPI_PERCENT);
         const term = getFieldValue(data, QUOTE_TERM_MONTHS);
         this._cpiPercent = cpi != null && cpi !== '' ? cpi : '';
@@ -120,6 +164,8 @@ export default class QuoteDealInput extends LightningElement {
     }
   }
 
+  // Safe accessor for fields: if a field isn't present in the wire payload,
+  // uiRecordApi access can throw; we convert that into `null`.
   _safeFieldValue(fieldRef) {
     try {
       return this._record ? getFieldValue(this._record, fieldRef) : null;
@@ -216,16 +262,27 @@ export default class QuoteDealInput extends LightningElement {
     }
   }
 
+  // UI-only End Date display logic.
+  // The server also computes/sends the end date to RLM when appropriate.
   _computeEndDate() {
-    const start = this._startDate || this._editValues.startDate;
-    const term = this._termMonths ?? this._editValues.termMonths;
-    if (!start || term == null || term === '') return '';
-    const startDate = new Date(start + 'T00:00:00');
-    if (isNaN(startDate.getTime())) return '';
-    const end = addMonths(startDate, Number(term));
-    return formatDate(end);
+    const startIso = this._startDate || this._editValues.startDate;
+    const termMonths = this._termMonths ?? this._editValues.termMonths;
+    if (!startIso || termMonths == null || termMonths === '') return '';
+
+    // Ensure we’re working with a pure ISO date (no time portion).
+    const normalizedStartIso = startIso.indexOf('T') > -1 ? startIso.split('T')[0] : String(startIso);
+    const endDateIso = computeEndDateIsoFromStartIso(normalizedStartIso, termMonths);
+    return endDateIso ? formatMonthDayYearFromIso(endDateIso) : '';
   }
 
+  _computeEndDateIsoForSave(startIso, termMonths) {
+    if (!startIso || termMonths == null || termMonths === '') return null;
+    const normalizedStartIso = startIso.indexOf('T') > -1 ? startIso.split('T')[0] : String(startIso);
+    const endDateIso = computeEndDateIsoFromStartIso(normalizedStartIso, termMonths);
+    return endDateIso || null;
+  }
+
+  // Input change handlers (each updates the backing tracked value and refreshes dependent UI).
   handleOverallDealTypeChange(event) {
     this._overallDealType = event.detail.value;
   }
@@ -264,19 +321,32 @@ export default class QuoteDealInput extends LightningElement {
 
   async handleSave() {
     if (!this.recordId) return;
+    // Normalize StartDate to YYYY-MM-DD.
+    // The Apex controller (and the RLM Place Sales Transaction request) expects an ISO date string.
+    // Some orgs deliver date/time values containing a "T" timestamp; we strip the time portion.
     const startStr = this._startDate || this.effectiveDateValue;
-    const proposedStart = startStr ? (startStr.indexOf('T') > -1 ? startStr.split('T')[0] : startStr) : null;
+    const proposedStart = startStr
+      ? (startStr.indexOf('T') > -1 ? startStr.split('T')[0] : startStr)
+      : null;
+
+    const termForSave = this._termMonths ?? this._editValues.termMonths;
+    const endDateIsoForSave = this._computeEndDateIsoForSave(proposedStart, termForSave);
     const payload = {
+      // Quote-level fields (editables from this UI)
       Overall_Deal_Type__c: this._overallDealType || null,
       Pan_Fiserv__c: this._panFiserv || null,
       VAR_Takeaway__c: this._varTakeaway,
       VAR_Name_Specify__c: this._varNameSpecify || null,
       CPI_Percent__c: this._cpiPercent != null && this._cpiPercent !== '' ? this._cpiPercent : null,
       Term_Months__c: this._termMonths != null && this._termMonths !== '' ? this._termMonths : null,
-      StartDate: this._startDate,
+      // Send the normalized value, not the raw UI value (more robust across org data formats).
+      StartDate: proposedStart,
+      // Explicitly send EndDate to ensure the server writes it.
+      EndDate: endDateIsoForSave,
     };
     this._isSaving = true;
     try {
+      // Calls Apex which routes the update through the RLM Place Sales Transaction executor.
       await saveQuoteDealFields({ quoteId: this.recordId, fieldValues: payload });
       this.dispatchEvent(new ShowToastEvent({ title: 'Saved', message: 'Quote deal fields updated.', variant: 'success' }));
       this._endDateDisplay = this._computeEndDate();
