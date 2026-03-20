@@ -70,7 +70,7 @@ public with sharing class SegmentService {
         }
 
         Quote q = [
-            SELECT Id, Proposed_Start_Date__c, Term_Months__c, ExpirationDate, DDA_Share_Accounts_Count__c
+            SELECT Id, StartDate, Term_Months__c, EndDate, DDA_Share_Accounts_Count__c
             FROM Quote
             WHERE Id = :quoteIdParam
             WITH SECURITY_ENFORCED
@@ -78,19 +78,19 @@ public with sharing class SegmentService {
         ];
         System.debug(LoggingLevel.INFO,
             'SegmentService.doCreateOrUpdate quote loaded Id=' + q.Id +
-            ' start=' + q.Proposed_Start_Date__c +
+            ' start=' + q.StartDate +
             ' termMonths=' + q.Term_Months__c +
-            ' expiration=' + q.ExpirationDate +
+            ' expiration=' + q.EndDate +
             ' dda=' + q.DDA_Share_Accounts_Count__c
         );
 
-        Date quoteStart = q.Proposed_Start_Date__c;
+        Date quoteStart = q.StartDate;
         if (quoteStart == null) {
             System.debug(LoggingLevel.WARN, 'SegmentService.doCreateOrUpdate EXIT quoteStart is null for quoteId=' + q.Id);
-            return 'No segments created: Quote Proposed_Start_Date__c is blank. Set it and save again.';
+            return 'No segments created: Quote StartDate is blank. Set it and save again.';
         }
 
-        Date quoteEnd = q.ExpirationDate;
+        Date quoteEnd = q.EndDate;
         if (quoteEnd == null && q.Term_Months__c != null) {
             quoteEnd = addMonths(quoteStart, q.Term_Months__c.intValue());
             System.debug(LoggingLevel.INFO, 'SegmentService.doCreateOrUpdate quoteEnd derived from termMonths=' + quoteEnd);
@@ -99,7 +99,7 @@ public with sharing class SegmentService {
             System.debug(LoggingLevel.WARN,
                 'SegmentService.doCreateOrUpdate EXIT invalid quoteEnd=' + quoteEnd + ' quoteStart=' + quoteStart
             );
-            return 'No segments created: set Quote ExpirationDate and/or Term_Months__c so an end date on/after Proposed_Start_Date__c can be determined.';
+            return 'No segments created: set Quote EndDate and/or Term_Months__c so an end date on/after StartDate can be determined.';
         }
 
         Decimal ddaFromQuote = q.DDA_Share_Accounts_Count__c != null ? q.DDA_Share_Accounts_Count__c : 0;
