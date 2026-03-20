@@ -155,7 +155,7 @@ public with sharing class LineSegmentRevenueService {
 
                 Decimal revenueAmount;
                 if (isAnnualTransProduct(productLabel)) {
-                    revenueAmount = unitPrice * annualTrans;
+                    revenueAmount = getBaseRate(li) * annualTrans;
                 } else {
                     revenueAmount = unitPrice * qty * monthsInOverlap;
                 }
@@ -192,6 +192,18 @@ public with sharing class LineSegmentRevenueService {
 
     private static Boolean isTermedLine(QuoteLineItem li) {
         return isTermedQuoteLine(li);
+    }
+
+    private static Decimal getBaseRate(QuoteLineItem li) {
+        RateCard rc = [SELECT Id
+                        FROM RateCard
+                        WHERE Type = 'Base'].get(0);
+                        
+        RateCardEntry rce = [SELECT Rate, ProductSellingModel.PricingTermUnit
+                                FROM RateCardEntry
+                                WHERE (RateCardId = :rc.Id AND ProductId = :li.Product2Id AND ProductSellingModel.PricingTermUnit = 'Months')].get(0);
+        
+        return rce.Rate;
     }
 
     /** Exposed for LineSegmentRevenueTableController and other callers. */

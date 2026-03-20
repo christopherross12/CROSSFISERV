@@ -34,9 +34,11 @@ public with sharing class LineSegmentRevenueTableController {
                 StartDate,
                 EndDate,
                 RLM_ProductName__c,
-                Product2.Name
+                Product2.Name,
+                Product2.Type,
+                Product2.UsageModelType
             FROM QuoteLineItem
-            WHERE QuoteId = :quoteId
+            WHERE (Product2.Type != 'Bundle' AND QuoteId = :quoteId)
             WITH SECURITY_ENFORCED
             ORDER BY CreatedDate
         ];
@@ -68,7 +70,11 @@ public with sharing class LineSegmentRevenueTableController {
             RecurringFeeRow row = new RecurringFeeRow();
             row.quoteLineId = li.Id;
             row.productName = resolveProductName(li);
-            row.unitPrice = li.UnitPrice;
+            if (li.Product2.UsageModelType == null) {
+                row.unitPrice = li.UnitPrice;
+            } else if (li.Product2.UsageModelType == 'Anchor' || li.Product2.UsageModelType == 'Pack') {
+                row.unitPrice = getBaseRate(li);
+            }
             Decimal rowTotal = 0;
 
             Integer colIndex = 0;
@@ -89,6 +95,18 @@ public with sharing class LineSegmentRevenueTableController {
 
         grid.columnTotals = columnTotals;
         return grid;
+    }
+
+    private static Decimal getBaseRate(QuoteLineItem li) {
+        RateCard rc = [SELECT Id
+                        FROM RateCard
+                        WHERE Type = 'Base'].get(0);
+                        
+        RateCardEntry rce = [SELECT Rate, ProductSellingModel.PricingTermUnit
+                                FROM RateCardEntry
+                                WHERE (RateCardId = :rc.Id AND ProductId = :li.Product2Id AND ProductSellingModel.PricingTermUnit = 'Months')].get(0);
+        
+        return rce.Rate;
     }
 
     /**

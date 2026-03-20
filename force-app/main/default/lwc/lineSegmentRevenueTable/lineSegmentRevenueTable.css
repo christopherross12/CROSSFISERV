@@ -19,6 +19,11 @@
   max-width: 320px;
   text-align: left;
   font-weight: 500;
+  /* Ensure long values wrap instead of overflowing.
+     `word-wrap` is legacy; `overflow-wrap` + explicit `white-space` is more reliable with SLDS tables. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+
 }
 
 .unit-price-col {
