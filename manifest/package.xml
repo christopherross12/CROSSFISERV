@@ -45,14 +45,5 @@
         <name>Flow</name>
     </types>
     -->
-    <types>
-        <members>*</members>
-        <name>PermissionSet</name>
-    </types>
-    <types>
-        <members>Admin</members>
-        <members>Standard</members>
-        <name>Profile</name>
-    </types>
     <version>66.0</version>
 </Package>

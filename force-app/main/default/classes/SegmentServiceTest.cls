@@ -28,6 +28,11 @@ private class SegmentServiceTest {
 
         System.assertEquals(1, results.size(), 'One result');
         System.assertEquals(true, results[0].success, 'Should succeed');
+        System.assertEquals(
+            'Segments created or updated successfully.',
+            results[0].message,
+            'Invocable message when segments are built'
+        );
 
         List<Segment__c> segments = [SELECT Id, Quote__c, Start_Date__c, End_Date__c, DDA__c, Adoption_Rate__c, Active_Users__c, Annual_Trans__c FROM Segment__c WHERE Quote__c = :q.Id ORDER BY Start_Date__c];
         System.assert(segments.size() >= 1, 'At least one segment created');
@@ -65,6 +70,10 @@ private class SegmentServiceTest {
         Test.stopTest();
 
         System.assertEquals(true, results[0].success, 'Should succeed without creating segments');
+        System.assert(
+            results[0].message != null && results[0].message.contains('Proposed_Start_Date__c'),
+            'Message should explain missing start date: ' + results[0].message
+        );
         System.assertEquals(0, [SELECT COUNT() FROM Segment__c WHERE Quote__c = :q.Id], 'No segments when no start date');
     }
 }

@@ -1,0 +1,47 @@
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.recurring-fees-table {
+  min-width: 520px;
+  border-collapse: collapse;
+}
+
+.recurring-fees-table th,
+.recurring-fees-table td {
+  padding: 0.5rem 0.65rem;
+  vertical-align: middle;
+}
+
+.label-col {
+  min-width: 200px;
+  max-width: 320px;
+  text-align: left;
+  font-weight: 500;
+}
+
+.unit-price-col {
+  min-width: 100px;
+  white-space: nowrap;
+}
+
+.year-col {
+  min-width: 88px;
+  white-space: nowrap;
+}
+
+.total-col {
+  background-color: #f3f2f2;
+  font-weight: 600;
+  min-width: 100px;
+}
+
+.recurring-fees-table thead th.total-col {
+  background-color: #f3f2f2;
+}
+
+.totals-row td {
+  border-top: 2px solid #c9c9c9;
+  font-weight: 600;
+}

@@ -1,0 +1,85 @@
+<template>
+  <lightning-card title="Recurring Fees" icon-name="standard:product">
+    <div class="slds-p-around_medium">
+      <div class="slds-m-bottom_small slds-grid slds-grid_align-spread">
+        <p class="slds-text-body_small slds-text-color_weak">
+          Termed quote lines with segment revenue by year (from Line Segment Revenue records).
+        </p>
+        <div>
+          <lightning-button
+            label="Sync line revenue"
+            title="Rebuild Line Segment Revenue from segments and quote lines"
+            onclick={handleSync}
+            disabled={isSyncing}
+            class="slds-m-right_x-small"
+          ></lightning-button>
+          <lightning-button label="Refresh" variant="neutral" onclick={handleRefresh} disabled={isLoading}></lightning-button>
+        </div>
+      </div>
+
+      <template lwc:if={isLoading}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+      </template>
+
+      <template lwc:if={error}>
+        <div class="slds-theme_error slds-p-around_small slds-m-top_small">
+          <p>{error}</p>
+        </div>
+      </template>
+
+      <template lwc:if={showTable}>
+        <div class="table-scroll">
+          <table class="recurring-fees-table slds-table slds-table_cell-buffer slds-table_bordered">
+            <thead>
+              <tr>
+                <th scope="col" class="label-col"></th>
+                <th scope="col" class="unit-price-col slds-text-align_right">Unit Price</th>
+                <template for:each={grid.segmentColumns} for:item="col">
+                  <th key={col.segmentId} scope="col" class="year-col slds-text-align_right">{col.yearLabel}</th>
+                </template>
+                <th scope="col" class="total-col slds-text-align_right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template for:each={grid.rows} for:item="row">
+                <tr key={row.quoteLineId}>
+                  <td class="label-col">{row.productName}</td>
+                  <td class="unit-price-col slds-text-align_right">{row.unitPriceDisplay}</td>
+                  <template for:each={row.cells} for:item="cell">
+                    <td key={cell.key} class="year-col slds-text-align_right">{cell.display}</td>
+                  </template>
+                  <td class="total-col slds-text-align_right">{row.rowTotalDisplay}</td>
+                </tr>
+              </template>
+            </tbody>
+            <tfoot>
+              <tr class="totals-row">
+                <td class="label-col slds-text-title_caps" colspan="2">Total</td>
+                <template for:each={grid.columnTotals} for:item="ct">
+                  <td key={ct.key} class="year-col slds-text-align_right total-col">{ct.display}</td>
+                </template>
+                <td class="total-col slds-text-align_right">{grid.grandTotalDisplay}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </template>
+
+      <template lwc:if={showEmpty}>
+        <p class="slds-text-color_weak slds-m-top_small">
+          No termed quote lines found, or Line Segment Revenue has not been synced yet. Use <strong>Sync line revenue</strong> after segments exist.
+        </p>
+      </template>
+
+      <template lwc:if={showNoSegments}>
+        <p class="slds-text-color_weak slds-m-top_small">
+          No segments for this quote. Create segments (e.g. save the quote with Start Date and Term) before syncing line revenue.
+        </p>
+      </template>
+
+      <template lwc:if={noRecordId}>
+        <p class="slds-text-color_weak">Open a Quote record to view recurring fees.</p>
+      </template>
+    </div>
+  </lightning-card>
+</template>

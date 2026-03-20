@@ -25,10 +25,10 @@ public with sharing class SegmentService {
             System.debug(LoggingLevel.INFO, 'SegmentService.createOrUpdateSegmentsForQuote processing quoteId=' + req.quoteId);
             InvocableResult res = new InvocableResult();
             try {
-                doCreateOrUpdate(req.quoteId);
+                String outcome = doCreateOrUpdate(req.quoteId);
                 res.success = true;
-                res.message = 'Segments created or updated successfully.';
-                System.debug(LoggingLevel.INFO, 'SegmentService.createOrUpdateSegmentsForQuote SUCCESS quoteId=' + req.quoteId);
+                res.message = outcome;
+                System.debug(LoggingLevel.INFO, 'SegmentService.createOrUpdateSegmentsForQuote SUCCESS quoteId=' + req.quoteId + ' message=' + outcome);
             } catch (Exception e) {
                 res.success = false;
                 res.message = e.getMessage();
@@ -59,7 +59,10 @@ public with sharing class SegmentService {
         public String errorMessage;
     }
 
-    private static void doCreateOrUpdate(Id quoteIdParam) {
+    /**
+     * @return User-facing outcome message (success path). Explains skips so Flow debug logs are actionable.
+     */
+    private static String doCreateOrUpdate(Id quoteIdParam) {
         System.debug(LoggingLevel.INFO, 'SegmentService.doCreateOrUpdate START quoteId=' + quoteIdParam);
         if (quoteIdParam == null) {
             System.debug(LoggingLevel.ERROR, 'SegmentService.doCreateOrUpdate missing quoteId.');
@@ -84,7 +87,7 @@ public with sharing class SegmentService {
         Date quoteStart = q.Proposed_Start_Date__c;
         if (quoteStart == null) {
             System.debug(LoggingLevel.WARN, 'SegmentService.doCreateOrUpdate EXIT quoteStart is null for quoteId=' + q.Id);
-            return;
+            return 'No segments created: Quote Proposed_Start_Date__c is blank. Set it and save again.';
         }
 
         Date quoteEnd = q.ExpirationDate;
@@ -96,7 +99,7 @@ public with sharing class SegmentService {
             System.debug(LoggingLevel.WARN,
                 'SegmentService.doCreateOrUpdate EXIT invalid quoteEnd=' + quoteEnd + ' quoteStart=' + quoteStart
             );
-            return;
+            return 'No segments created: set Quote ExpirationDate and/or Term_Months__c so an end date on/after Proposed_Start_Date__c can be determined.';
         }
 
         Decimal ddaFromQuote = q.DDA_Share_Accounts_Count__c != null ? q.DDA_Share_Accounts_Count__c : 0;
@@ -175,6 +178,7 @@ public with sharing class SegmentService {
             System.debug(LoggingLevel.INFO, 'SegmentService.doCreateOrUpdate delete completed.');
         }
         System.debug(LoggingLevel.INFO, 'SegmentService.doCreateOrUpdate END quoteId=' + quoteIdParam);
+        return 'Segments created or updated successfully.';
     }
 
     private static List<SegmentRange> computeSegmentRanges(Date quoteStart, Date quoteEnd) {

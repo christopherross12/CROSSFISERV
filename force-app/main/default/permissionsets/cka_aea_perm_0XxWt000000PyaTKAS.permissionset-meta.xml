@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>Allows custom permissions for Agentforce Agent : slack_cka_aea&apos;s agent user : slack_cka_aea@00dwt00000bs6tlmad.ext.</description>
-    <hasActivationRequired>false</hasActivationRequired>
-    <label>slack_cka_aea_0XxWt000000PyaTKAS Permissions</label>
-</PermissionSet>
